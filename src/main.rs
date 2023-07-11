@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 use bevy::window::WindowMode;
 use crate::map::{MAP_HEIGHT, MAP_WIDTH, MapPlugin};
+use crate::object::ObjectPlugin;
 
 mod spatial;
 mod map;
+mod object;
 
 fn main() {
     App::new()
@@ -22,7 +24,7 @@ fn main() {
             )
             .set(ImagePlugin::default_nearest())
         )
-        .add_plugins(MapPlugin)
+        .add_plugins((MapPlugin, ObjectPlugin))
         .add_systems(Startup, spawn_camera)
         .run()
 }
