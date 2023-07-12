@@ -27,30 +27,20 @@ struct Object {
     path: Path,
 }
 
-#[derive(Copy, Clone, Debug)]
+/// Path an object will move along
+#[derive(Copy, Clone)]
 struct Path {
-    a: Vec2,
-    b: Vec2,
+    /// The target position
     target: Vec2,
+    /// The direction vector to the target from the original position
     direction: Vec2,
 }
 
 impl Path {
-    fn new(a: Vec2, b: Vec2) -> Self {
+    fn new(current_position: Vec2, target: Vec2) -> Self {
         Path {
-            a,
-            b,
-            target: b,
-            direction: (b - a).normalize(),
-        }
-    }
-
-    fn reverse(&mut self) {
-        self.direction = -1.0 * self.direction;
-
-        self.target = match self.target == self.a {
-            true => self.b,
-            false => self.a
+            target,
+            direction: (target - current_position).normalize()
         }
     }
 }
@@ -69,11 +59,12 @@ fn spawn_object(
     rand: &mut ThreadRng,
     commands: &mut Commands,
 ) {
-    let path = generate_path(rand);
+    let start = generate_vec2(rand);
+    let target = generate_vec2(rand);
 
     commands.spawn((
         Object {
-            path
+            path: Path::new(start, target)
         },
         SpriteBundle {
             sprite: Sprite {
@@ -82,24 +73,10 @@ fn spawn_object(
                 anchor: Anchor::BottomLeft,
                 ..default()
             },
-            transform: Transform::from_translation(Vec3::from((path.a, 1.0))),
+            transform: Transform::from_translation(Vec3::from((start, 1.0))),
             ..default()
         }
     ));
-}
-
-fn generate_path(rand: &mut ThreadRng) -> Path {
-    let get_range = |len: f32| (len * 0.025)..(len - len * 0.025);
-
-    let xa = rand.gen_range(get_range(MAP_WIDTH));
-    let ya = rand.gen_range(get_range(MAP_HEIGHT));
-    let xb = rand.gen_range(get_range(MAP_WIDTH));
-    let yb = rand.gen_range(get_range(MAP_HEIGHT));
-
-    Path::new(
-        Vec2::new(xa, ya),
-        Vec2::new(xb, yb),
-    )
 }
 
 fn move_along_path(
@@ -107,6 +84,7 @@ fn move_along_path(
     mut query: Query<(&mut Object, &mut Transform)>,
 ) {
     let delta = time.delta_seconds();
+    let mut rand = thread_rng();
 
     for (mut object, mut transform) in &mut query {
         let mut xy = transform.translation.xy();
@@ -116,9 +94,16 @@ fn move_along_path(
 
         if path.target.distance(xy) < 1.0 {
             xy = path.target;
-            object.path.reverse();
+            object.path = Path::new(xy, generate_vec2(&mut rand));
         }
 
         transform.translation = Vec3::from((xy, transform.translation.z));
     }
+}
+
+fn generate_vec2(rand: &mut ThreadRng) -> Vec2 {
+    let get_range = |len: f32| (len * 0.025)..(len - len * 0.025);
+    let x = rand.gen_range(get_range(MAP_WIDTH));
+    let y = rand.gen_range(get_range(MAP_HEIGHT));
+    Vec2::new(x, y)
 }
