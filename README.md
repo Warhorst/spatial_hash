@@ -3,7 +3,7 @@ A prototypical implementation of a spatial hash. In this case, a spatial hash gr
 
 Run the prototype with ``cargo run``.
 
-500 squares will spawn which move randomly around the map. The spatial hash grid is configured to devide the map in 100x100 cells. Every square that touches the center position will be marked reed, else black. The center is the collection of cells between the corner points (49, 49) and (51, 51).
+500 squares will spawn which move randomly around the map. The spatial hash grid is configured to divide the map in 100x100 cells. Every square that touches the center position will be marked reed, else black. The center is the collection of cells between the corner points (49, 49) and (51, 51).
 
 Main source for this prototype was the repo of Simon Dev: https://github.com/simondevyoutube/Tutorial_SpatialHashGrid_Optimized (I am using the less optimized version for now)
 

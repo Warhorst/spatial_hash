@@ -25,6 +25,11 @@ fn create_spatial_hash_grid(
     ));
 }
 
+/// Update the spatial hash of all objects in the world. If an object was not
+/// yet added to the spatial hash, this will happen here.
+///
+/// Note: To keep things simple, the Spatial struct is not a component. If it was,
+/// it would be necessary to keep it in sync with the sprite position and dimension.
 fn update_spatial_hash_grid(
     mut grid: ResMut<SpatialHashGrid>,
     query: Query<(Entity, &Transform, &Sprite), With<Object>>
@@ -44,6 +49,7 @@ fn update_spatial_hash_grid(
     }
 }
 
+/// The spatial properties of an entity.
 pub struct Spatial {
     pub coordinates: Vec2,
     pub dimension: Dimension,
@@ -55,12 +61,18 @@ pub struct Dimension {
     pub height: f32,
 }
 
-// https://github.com/simondevyoutube/Tutorial_SpatialHashGrid_Optimized
+/// Divides the game/simulation map into cells. Every entity with a position and size can
+/// be assigned to one or more cells. Entities at a specific position can be fastly retrieved.
 #[derive(Resource)]
 pub struct SpatialHashGrid {
+    /// The bottom left and top right corner points of the map.
     bounds: (Vec2, Vec2),
+    /// The dimension of the cells. For example: (10, 10) means 10x10 cells
     dimensions: (usize, usize),
+    /// Mapping from a position to a set of entities at this position
     position_entities_map: HashMap<Position, HashSet<Entity>>,
+    /// Mapping from an entity to a pair of corner positions. For example: If an entity
+    /// touches the positions (1,1), (1,2), (2,1) and (2,2), the mapping will hold the tuple ((1,1), (2,2))
     entity_indices_map: HashMap<Entity, (Position, Position)>
 }
 
@@ -77,6 +89,8 @@ impl SpatialHashGrid {
         }
     }
 
+    /// Insert an entity with given spatial properties into the grid. If it already exists,
+    /// it will be overwritten.
     pub fn insert_entity(&mut self, entity: Entity, spatial: Spatial) {
         let Vec2 { x, y } = spatial.coordinates;
         let Dimension { width, height } = spatial.dimension;
@@ -106,11 +120,13 @@ impl SpatialHashGrid {
         p!(x_index, y_index)
     }
 
+    /// Update an entities spatial hash with the new spatial properties.
     pub fn update_entity(&mut self, entity: Entity, spatial: Spatial) {
         self.remove_entity(entity);
         self.insert_entity(entity, spatial);
     }
 
+    /// Remove an entity from the spatial hash. If it does not exist, nothing will happen.
     pub fn remove_entity(&mut self, entity: Entity) {
         let (pos_1, pos_2) = match self.entity_indices_map.get(&entity) {
             Some((pos_1, pos_2)) => (pos_1, pos_2),
@@ -124,6 +140,7 @@ impl SpatialHashGrid {
         self.entity_indices_map.remove(&entity);
     }
 
+    /// Return all entities which touch the cells at the given positions
     pub fn get_entities_at_positions(
         &self,
         positions: impl IntoIterator<Item=Position>
