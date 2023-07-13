@@ -1,6 +1,53 @@
+use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use pad::{Position, p};
+use crate::map::{MAP_HEIGHT, MAP_WIDTH};
+use crate::object::Object;
+
+pub struct SpatialPlugin;
+
+impl Plugin for SpatialPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .add_systems(Startup, create_spatial_hash_grid)
+            .add_systems(Update, update_spatial_hash_grid)
+        ;
+    }
+}
+
+fn create_spatial_hash_grid(
+    mut commands: Commands
+) {
+    commands.insert_resource(SpatialHashGrid::new(
+        (Vec2::default(), Vec2::new(MAP_WIDTH, MAP_HEIGHT)),
+        (100, 100)
+    ));
+}
+
+fn update_spatial_hash_grid(
+    mut grid: ResMut<SpatialHashGrid>,
+    query: Query<(Entity, &Transform, &Sprite), With<Object>>
+) {
+    for (entity, transform, sprite) in &query {
+        let coordinates = transform.translation.xy();
+        let size = sprite.custom_size.expect("custom size must be set");
+        let spatial = Spatial {
+            coordinates,
+            dimension: Dimension {
+                width: size.x,
+                height: size.y
+            }
+        };
+
+        grid.update_entity(entity, spatial);
+    }
+}
+
+pub struct Spatial {
+    pub coordinates: Vec2,
+    pub dimension: Dimension,
+}
 
 /// The dimension of an entity, aka how big it is in the world
 pub struct Dimension {
@@ -8,21 +55,16 @@ pub struct Dimension {
     pub height: f32,
 }
 
-#[derive(Component)]
-pub struct Spatial {
-    pub coordinates: Vec2,
-    pub dimension: Dimension,
-}
-
 // https://github.com/simondevyoutube/Tutorial_SpatialHashGrid_Optimized
-pub struct SpatialHash {
+#[derive(Resource)]
+pub struct SpatialHashGrid {
     bounds: (Vec2, Vec2),
     dimensions: (usize, usize),
     position_entities_map: HashMap<Position, HashSet<Entity>>,
     entity_indices_map: HashMap<Entity, (Position, Position)>
 }
 
-impl SpatialHash {
+impl SpatialHashGrid {
     pub fn new(
         bounds: (Vec2, Vec2),
         dimensions: (usize, usize),
@@ -70,7 +112,10 @@ impl SpatialHash {
     }
 
     pub fn remove_entity(&mut self, entity: Entity) {
-        let (pos_1, pos_2) = self.entity_indices_map.get(&entity).expect("the entity should exists in the map");
+        let (pos_1, pos_2) = match self.entity_indices_map.get(&entity) {
+            Some((pos_1, pos_2)) => (pos_1, pos_2),
+            None => return
+        };
 
         for pos in pos_1.iter_to(*pos_2) {
             self.position_entities_map.get_mut(&pos).expect("set should exist").remove(&entity);
@@ -79,8 +124,14 @@ impl SpatialHash {
         self.entity_indices_map.remove(&entity);
     }
 
-    pub fn get_entities_on_position(&self, pos: Position) -> impl IntoIterator<Item=&Entity> {
-        self.position_entities_map.get(&pos).expect("set should exist").iter()
+    pub fn get_entities_at_positions(
+        &self,
+        positions: impl IntoIterator<Item=Position>
+    ) -> impl IntoIterator<Item=&Entity> {
+        positions
+            .into_iter()
+            .flat_map(|pos| self.position_entities_map.get(&pos))
+            .flatten()
     }
 }
 

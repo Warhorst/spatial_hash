@@ -1,9 +1,12 @@
 use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
+use bevy::utils::HashSet;
+use pad::{p, Position};
 use rand::rngs::ThreadRng;
 use rand::{Rng, thread_rng};
 use crate::map::{MAP_HEIGHT, MAP_WIDTH};
+use crate::spatial::SpatialHashGrid;
 
 /// How many objects will be spawned in the world
 const NUM_OBJECTS: u16 = 500;
@@ -16,14 +19,17 @@ impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(Startup, spawn_objects)
-            .add_systems(Update, move_along_path)
+            .add_systems(Update, (
+                move_along_path,
+                change_color_of_objects_in_center
+            ))
         ;
     }
 }
 
 /// A moving object on the map.
 #[derive(Component)]
-struct Object {
+pub struct Object {
     path: Path,
 }
 
@@ -106,4 +112,22 @@ fn generate_vec2(rand: &mut ThreadRng) -> Vec2 {
     let x = rand.gen_range(get_range(MAP_WIDTH));
     let y = rand.gen_range(get_range(MAP_HEIGHT));
     Vec2::new(x, y)
+}
+
+fn change_color_of_objects_in_center(
+    grid: Res<SpatialHashGrid>,
+    mut query: Query<(Entity, &mut Sprite), With<Object>>
+) {
+    let entities_at_position = grid
+        .get_entities_at_positions(p!(49, 49).iter_to(p!(51, 51)))
+        .into_iter()
+        .collect::<HashSet<_>>();
+
+    for (entity, mut sprite) in &mut query {
+        if entities_at_position.contains(&entity) {
+            sprite.color = Color::RED
+        } else {
+            sprite.color = Color::BLACK
+        }
+    }
 }

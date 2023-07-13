@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::window::WindowMode;
 use crate::map::{MAP_HEIGHT, MAP_WIDTH, MapPlugin};
 use crate::object::ObjectPlugin;
+use crate::spatial::SpatialPlugin;
 
 mod spatial;
 mod map;
@@ -24,7 +25,7 @@ fn main() {
             )
             .set(ImagePlugin::default_nearest())
         )
-        .add_plugins((MapPlugin, ObjectPlugin))
+        .add_plugins((MapPlugin, ObjectPlugin, SpatialPlugin))
         .add_systems(Startup, spawn_camera)
         .run()
 }
